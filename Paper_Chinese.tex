@@ -44,7 +44,7 @@
 \title{以太坊：一种安全去中心化的通用交易账本 \\ {\smaller \textbf{EIP-150版本  (\YellowPaperVersionNumber{})}}}
 \author{
     原文作者: Dr. Gavin Wood,  gavin@ethcore.io\\
-    译者: 猿哥, root@cxyym.com, 微信 yuange1024; 高天露, tianlu.jorden.gao@gmail.com
+    译者: 崔广斌, root@cuiguangbin.com; 高天露, tianlu.jorden.gao@gmail.com
 }
 \begin{document}
 
@@ -529,60 +529,57 @@ V(H) & \equiv &  n \leqslant \frac{2^{256}}{H_d} \wedge m = H_m \quad \wedge \\
 
 每一个交易都有一个燃料上限：\textbf{gasLimit} (燃料上限)。这些燃料从发送者的账户中扣除。具体从账户上扣除的额度和 \textbf{gasPrice}(燃料价格) 有关(译者注: 扣除额度 = \textbf{gasLimit} * \textbf{gasPrice}), 在执行交易前会指定燃料价格。如果这个账户不能支付起燃料费用，这个交易会被当作无效交易。之所以它被命名为燃料上限，是因为剩余的燃料在交易完成之后会被退回（以购买时的同样价格）到发送者账户。燃料不会被用在交易执行之外。因此对于可信任账户，应该设置一个相对较高的燃料上限。
 
-
 通常来说，以太币（Ether）用作去购买燃料, 未退回的那部分转到了区块受益人的地址，通常这个账户的地址是由矿工设定。交易者可以任意设定燃料价格，然而矿工也可以任意地忽略某个交易。在一个交易中，高价格的燃料将消费这个发送者更多的以太币,并转给矿工更多的以太币，因此这个交易会被更多的矿工选择。通常来说，矿工将会选择去通知这是他们执行交易最低燃料价格, 交易者们一般也会些选择一个高过燃料价格下限的价格。因此, 会有一个（加权的）最低燃料可接受价格分布，交易者们需要权衡降低燃料价格和交易快速被矿工打包。
-
 
 \section{交易执行} \label{ch:transactions}
 
-The execution of a transaction is the most complex part of the Ethereum protocol: it defines the state transition function $\Upsilon$. It is assumed that any transactions executed first pass the initial tests of intrinsic validity. These include:
-
+交易执行是以太坊协议中最复杂的部分：它定义了状态转换函数 $\Upsilon$。所有交易在执行时,都要先通过内部的有效性测试,这些包含：
 \begin{enumerate}
-\item The transaction is well-formed RLP, with no additional trailing bytes;
-\item the transaction signature is valid;
-\item the transaction nonce is valid (equivalent to the sender account's current nonce);
-\item the gas limit is no smaller than the intrinsic gas, $g_0$, used by the transaction;
-\item the sender account balance contains at least the cost, $v_0$, required in up-front payment.
+\item 交易是 RLP 格式数据，没有多余的后缀字节；
+\item 交易的签名是有效的；
+\item 交易的随机数是有效的（等于发送者账户的当前随机数）;
+\item 燃料上限不小于实际交易过程中用的燃料 $g_0$;
+\item 发送者账户的余额至少大于费用 $v_0$,需要提前支付。
 \end{enumerate}
 
-Formally, we consider the function $\Upsilon$, with $T$ being a transaction and $\boldsymbol{\sigma}$ the state:
+$T$ 表示交易, $\boldsymbol{\sigma}$ 表示状态, 状态转移函数 $\Upsilon$ 如下:
 \begin{equation}
 \boldsymbol{\sigma}' = \Upsilon(\boldsymbol{\sigma}, T)
 \end{equation}
 
-Thus $\boldsymbol{\sigma}'$ is the post-transactional state. We also define $\Upsilon^g$ to evaluate to the amount of gas used in the execution of a transaction and $\Upsilon^\mathbf{l}$ to evaluate to the transaction's accrued log items, both to be formally defined later.
+$\boldsymbol{\sigma}'$ 是交易后的状态。我们定义 $\Upsilon^g$ 为交易执行所消耗的燃料量, $\Upsilon^\mathbf{l}$ 为交易过程中产生的日志记录, 都会在后文正式定义。
 
-\subsection{Substate}
-Throughout transaction execution, we accrue certain information that is acted upon immediately following the transaction. We call this \textit{transaction substate}, and represent it as $A$, which is a tuple:
+\subsection{子状态}
+
+从交易执行过程来看，伴随交易会产生一些特定的信息, 我们称为交易子状态，用 $A$ 来表示:
 \begin{equation}
 A \equiv (A_\mathbf{s}, A_\mathbf{l}, A_r)
 \end{equation}
 
-The tuple contents include $A_\mathbf{s}$, the self-destruct set: a set of accounts that will be discarded following the transaction's completion. $A_\mathbf{l}$ is the log series: this is a series of archived and indexable `checkpoints' in VM code execution that allow for contract-calls to be easily tracked by onlookers external to the Ethereum world (such as decentralised application front-ends). Finally there is $A_r$, the refund balance, increased through using the {\small SSTORE} instruction in order to reset contract storage to zero from some non-zero value. Though not immediately refunded, it is allowed to partially offset the total execution costs.
+元组内容包含自毁集合 $A_\mathbf{s}$: 一个将在交易完成后被删除的账户集合。 $A_\mathbf{l}$ 是一系列的日志：在代码执行过程中是可归档, 可索引的检查点, 允许以太坊世界的外部旁观者(例如去中心化应用的前端)跟踪合约调用。$A_r$ 表示返回的余额，当使用 {\small SSTORE} 指令将非0的合约存贮空间置为0时,返回余额会增加。虽然不是立即返回余额，但可以部分抵消整个执行费用。
 
-For brevity, we define the empty substate $A^0$ to have no self-destructs, no logs and a zero refund balance:
+我们定义空的子状态 $A^0$, 它没有自毁、没有日记、返回余额为0：
 \begin{equation}
 A^0 \equiv (\varnothing, (), 0)
 \end{equation}
 
-\subsection{Execution}
-We define intrinsic gas $g_0$, the amount of gas this transaction requires to be paid prior to execution, as follows:
+\subsection{执行}
+
+执行过程中需要的燃料需要在交易进行之前支付,定义 $g_0$ :
 \begin{align}
 g_0 \equiv {} & \sum_{i \in T_\mathbf{i}, T_\mathbf{d}} \begin{cases} G_{txdatazero} & \text{if} \quad i = 0 \\ G_{txdatanonzero} & \text{otherwise} \end{cases} \\
 {} & + \begin{cases} G_\text{txcreate} & \text{if} \quad T_t = \varnothing \\ 0 & \text{otherwise} \end{cases} \\
 {} & + G_{transaction}
 \end{align}
 
-where $T_\mathbf{i},T_\mathbf{d}$ means the series of bytes of the transaction's associated data and initialisation EVM-code, depending on whether the transaction is for contract-creation or message-call. $G_\text{txcreate}$ is added if the transaction is contract-creating, but not if a result of EVM-code. $G$ is fully defined in Appendix \ref{app:fees}.
+$T_\mathbf{i} 合约初始化EVM代码, T_\mathbf{d} 是交易附带的关联数据, 取决于交易是合约创建还是消息调用。如果这个交易是合约创建,那么会增加 $G_\text{txcreate}$ , 其它情况则不增加。$G$ 的详细定义见附录 \ref{app:fees}。
 
-%todo Explain g_d reason?
-
-The up-front cost $v_0$ is calculated as:
+预支付的费用 $v_0$ 计算如下:
 \begin{equation}
 v_0 \equiv T_g T_p + T_v
 \end{equation}
 
-The validity is determined as:
+需满足下面关系:
 \begin{equation}
 \begin{array}[t]{rcl}
 S(T) & \neq & \varnothing \quad \wedge \\
@@ -594,18 +591,21 @@ T_g & \leqslant & {B_H}_l - \ell(B_\mathbf{R})_u
 \end{array}
 \end{equation}
 
-Note the final condition; the sum of the transaction's gas limit, $T_g$, and the gas utilised in this block prior, given by $\ell(B_\mathbf{R})_u$, must be no greater than the block's \textbf{gasLimit}, ${B_H}_l$.
 
-The execution of a valid transaction begins with an irrevocable change made to the state: the nonce of the account of the sender, $S(T)$, is incremented by one and the balance is reduced by part of the up-front cost, $T_gT_p$. The gas available for the proceeding computation, $g$, is defined as $T_g - g_0$. The computation, whether contract creation or a message call, results in an eventual state (which may legally be equivalent to the current state), the change to which is deterministic and never invalid: there can be no invalid transactions from this point.
+注意最后的那个条件: 交易燃料限制 $T_g$  <= 这个区块的燃料限制 ${B_H}_l$ - 这个区块之前的所有交易已使用的燃料 $\ell(B_\mathbf{R})_u$  。
 
-We define the checkpoint state $\boldsymbol{\sigma}_0$:
+
+有效交易的执行起始于一个对状态不能撤回的改变：发送者账户 $S(T)$ 的随机数会加1, 账户余额扣减部分预付费用 $T_gT_p$。计算过程中有效的燃料 $g$ = $T_g - g_0$。无论是合约创建还是消息调用，得到的最终这状态（可能等于当前的状态），这个改变是确定的且永久无效:从这个观点看不会存在无效的交易。
+
+我们定义检查点状态 $\boldsymbol{\sigma}_0$：
 \begin{eqnarray}
 \boldsymbol{\sigma}_0 & \equiv & \boldsymbol{\sigma} \quad \text{except:} \\
 \boldsymbol{\sigma}_0[S(T)]_b & \equiv & \boldsymbol{\sigma}[S(T)]_b - T_g T_p \\
 \boldsymbol{\sigma}_0[S(T)]_n & \equiv & \boldsymbol{\sigma}[S(T)]_n + 1
 \end{eqnarray}
 
-Evaluating $\boldsymbol{\sigma}_P$ from $\boldsymbol{\sigma}_0$ depends on the transaction type; either contract creation or message call; we define the tuple of post-execution provisional state $\boldsymbol{\sigma}_P$, remaining gas $g'$ and substate $A$:
+
+从 $\boldsymbol{\sigma}_0$ 转变为 $\boldsymbol{\sigma}_P$ 和交易类型相关。不管它是创建合约还是消息调用,我们定义元组包括执行后的临时状态 $\boldsymbol{\sigma}_P$ , 剩余的燃料 $g'$ 和子状态 $A$ :
 \begin{equation}
 (\boldsymbol{\sigma}_P, g', A) \equiv \begin{cases}
 \Lambda(\boldsymbol{\sigma}_0, S(T), T_o, &\\ \quad\quad g, T_p, T_v, T_\mathbf{i}, 0) & \text{if} \quad T_t = \varnothing \\
@@ -613,22 +613,25 @@ Evaluating $\boldsymbol{\sigma}_P$ from $\boldsymbol{\sigma}_0$ depends on the t
 \end{cases}
 \end{equation}
 
-where $g$ is the amount of gas remaining after deducting the basic amount required to pay for the existence of the transaction:
+其中 $g$ 是燃料上限扣除已有的交易消耗的燃料：
 \begin{equation}
 g \equiv T_g - g_0
 \end{equation}
-and $T_o$ is the original transactor, which can differ from the sender in the case of a message call or contract creation not directly triggered by a transaction but coming from the execution of EVM-code.
 
-Note we use $\Theta_{3}$ to denote the fact that only the first three components of the function's value are taken; the final represents the message-call's output value (a byte array) and is unused in the context of transaction evaluation.
+$T_o$ 是原始执行者，与和合约创建或消息调用(直接由交易触发)不同, 可以通过执行 EVM 代码内部调用来执行。
 
-After the message call or contract creation is processed, the state is finalised by determining the amount to be refunded, $g^*$ from the remaining gas, $g'$, plus some allowance from the refund counter, to the sender at the original rate.
+注意，我们使用 $\Theta_{3}$ 表示取函数值的前三个元素;最终结果是消息调用的输出（一个字节数组）, 最终结果并没有在交易的上下文使用。
+
+在消息调回或者创建合约被处理后，再确定退回的燃料后最终状态就确定了。 剩余的燃料 $g'$, 再加上一些补偿, 得到最终需要退回发送者的燃料 $g^*$:
+
 \begin{equation}
 g^* \equiv g' + \min \{ \Big\lfloor \dfrac{T_g - g'}{2} \Big\rfloor, A_r \}
 \end{equation}
 
-The total refundable amount is the legitimately remaining gas $g'$, added to $A_r$, with the latter component being capped up to a maximum of half (rounded down) of the total amount used $T_g - g'$.
+终需要退回发送者的燃料 $g^*$ 等于当前剩余的燃料 $g'$, 再加一个补偿, 这个补偿是 $A_r$ 和总使用燃料量 $T_g - g'$ 的一半中的小者。
 
-The Ether for the gas is given to the miner, whose address is specified as the beneficiary of the present block $B$. So we define the pre-final state $\boldsymbol{\sigma}^*$ in terms of the provisional state $\boldsymbol{\sigma}_P$:
+燃料对应的以太币给了矿工, 矿工地址是当前区块 $B$ 的受益者地址。我们定义预备最终状态 $\boldsymbol{\sigma}^*$ , 临时状态 $\boldsymbol{\sigma}_P$:
+
 \begin{eqnarray}
 \boldsymbol{\sigma}^* & \equiv & \boldsymbol{\sigma}_P \quad \text{except} \\
 \boldsymbol{\sigma}^*[S(T)]_b & \equiv & \boldsymbol{\sigma}_P[S(T)]_b + g^* T_p \\
@@ -636,37 +639,37 @@ The Ether for the gas is given to the miner, whose address is specified as the b
 m & \equiv & {B_H}_c
 \end{eqnarray}
 
-The final state, $\boldsymbol{\sigma}'$, is reached after deleting all accounts that appear in the self-destruct set:
+删除所有出现在自毁集合中的账户后, 达到了最终状态 $\boldsymbol{\sigma}'$:
 \begin{eqnarray}
 \boldsymbol{\sigma}' & \equiv & \boldsymbol{\sigma}^* \quad \text{except} \\
 \forall i \in A_\mathbf{s}: \boldsymbol{\sigma}'[i] & \equiv & \varnothing
 \end{eqnarray}
 
-And finally, we specify $\Upsilon^g$, the total gas used in this transaction and $\Upsilon^\mathbf{l}$, the logs created by this transaction:
+最后, 我们定义这次交易中总共使用的燃料 $\Upsilon^g$,  这次交易中创建的日志 $\Upsilon^\mathbf{l}$:
 \begin{eqnarray}
 \Upsilon^g(\boldsymbol{\sigma}, T) & \equiv & T_g - g' \\
 \Upsilon^\mathbf{l}(\boldsymbol{\sigma}, T) & \equiv & A_\mathbf{l}
 \end{eqnarray}
 
-These are used to help define the transaction receipt, discussed later.
+这些有助于后续讨论的交易收据。
 
-\section{Contract Creation} \label{ch:create}
+\section{合约创建} \label{ch:create}
 
-There are a number of intrinsic parameters used when creating an account: sender ($s$), original transactor ($o$), available gas ($g$), gas price ($p$), endowment ($v$) together with an arbitrary length byte array, $\mathbf{i}$, the initialisation EVM code and finally the present depth of the message-call/contract-creation stack ($e$).
+当创建一个账户时会有很多参数:发送者（$s$）、原始执行者（$o$）、可用的燃料（$g$）、燃料价格（$p$）、转账额度（$v$）、任意长度的字节数组 $\mathbf{i}$、EVM初始化代码、消息调用/合约创建的当前栈深度($e$) 。
 
-We define the creation function formally as the function $\Lambda$, which evaluates from these values, together with the state $\boldsymbol{\sigma}$ to the tuple containing the new state, remaining gas and accrued transaction substate $(\boldsymbol{\sigma}', g', A)$, as in section \ref{ch:transactions}:
+我们定义创建函数为函数 $\Lambda$，相关的变量有状态 $\boldsymbol{\sigma}$ , 包含新状态、剩余燃料及交易子状态 $(\boldsymbol{\sigma}', g', A)$ (详见第6小结) :：
 \begin{equation}
 (\boldsymbol{\sigma}', g', A) \equiv \Lambda(\boldsymbol{\sigma}, s, o, g, p, v, \mathbf{i}, e)
 \end{equation}
 
-The address of the new account is defined as being the rightmost 160 bits of the Keccak hash of the RLP encoding of the structure containing only the sender and the nonce. Thus we define the resultant address for the new account $a$:
+这个新账户的地址被定义为包含发送者和随机数 RLP 编码的 Keccak 哈希的最边160位。因此我们定义新帐户 $a$ 的地址:
 \begin{equation}
 a \equiv \mathcal{B}_{96..255}\Big(\mathtt{\tiny KEC}\Big(\mathtt{\tiny RLP}\big(\;(s, \boldsymbol{\sigma}[s]_n - 1)\;\big)\Big)\Big)
 \end{equation}
 
-where $\mathtt{\tiny KEC}$ is the Keccak 256-bit hash function, $\mathtt{\tiny RLP}$ is the RLP encoding function, $\mathcal{B}_{a..b}(X)$ evaluates to binary value containing the bits of indices in the range $[a, b]$ of the binary data $X$ and $\boldsymbol{\sigma}[x]$ is the address state of $x$ or $\varnothing$ if none exists. Note we use one fewer than the sender's nonce value; we assert that we have incremented the sender account's nonce prior to this call, and so the value used is the sender's nonce at the beginning of the responsible transaction or VM operation.
+其中 $\mathtt{\tiny KEC}$ 是Keccak 256 位哈希函数，$\mathtt{\tiny RLP}$ 是 RLP 编码函数，$\mathcal{B}_{a..b}(X)$ 表示取二进制数据 $X$ 位数为范围 $[a, b]$ 的值,$\boldsymbol{\sigma}[x]$ 是地址 $x$ 的状态，$\varnothing$ 表示地址不存在时的状态。注意,我们使用的是一个比发送者随机数要小的值；我们断言会在在这个合约创建是前会增加发送者账户的随机数，因此在刚开始在交易或VM操作中使用的随机数就是发送者的随机数。
 
-The account's nonce is initially defined as zero, the balance as the value passed, the storage as empty and the code hash as the Keccak 256-bit hash of the empty string; the sender's balance is also reduced by the value passed. Thus the mutated state becomes $\boldsymbol{\sigma}^*$:
+账户的随机数开始被定义为0，余额为传递的转账值，存储空间为空, 哈希代码为Keccak 256位的空字符串哈希值；发送者的余额会减去转账值。这个变化的状态变成 $\boldsymbol{\sigma}^*$:
 \begin{equation}
 \boldsymbol{\sigma}^* \equiv \boldsymbol{\sigma} \quad \text{except:}
 \end{equation}
@@ -675,7 +678,7 @@ The account's nonce is initially defined as zero, the balance as the value passe
 \boldsymbol{\sigma}^*[s]_b &\equiv& \boldsymbol{\sigma}[s]_b - v
 \end{eqnarray}
 
-where $v'$ is the account's pre-existing value, in the event it was previously in existence:
+其中$v'$ 是账户在交易之前就有的余额:
 \begin{equation}
 v' \equiv \begin{cases}
 0 & \text{if} \quad \boldsymbol{\sigma}[a] = \varnothing\\
@@ -683,14 +686,12 @@ v' \equiv \begin{cases}
 \end{cases}
 \end{equation}
 
-%It is asserted that the state database will also change such that it defines the pair $(\mathtt{\tiny KEC}(\mathbf{b}), \mathbf{b})$.
-
-Finally, the account is initialised through the execution of the initialising EVM code $\mathbf{i}$ according to the execution model (see section \ref{ch:model}). Code execution can effect several events that are not internal to the execution state: the account's storage can be altered, further accounts can be created and further message calls can be made. As such, the code execution function $\Xi$ evaluates to a tuple of the resultant state $\boldsymbol{\sigma}^{**}$, available gas remaining $g^{**}$, the accrued substate $A$ and the body code of the account $\mathbf{o}$.
+最后，这个账户是通过执行初始化账户的 EVM 代码 $\mathbf{i}$ （执行模型详见小结 \ref{ch:model} ）来初始化的。代码执行可以影响一些事件：可以改变当前账户的存储，能创建更多的账户,执行更多的消息调用。代码执行函数 $\Xi$ 可以得到一个元组,包括结果状态 $\boldsymbol{\sigma}^{**}$, 还可以用的燃料剩余燃料 $g^{**}$, 子状态 $A$, 以及账户 $\mathbf{o}$ 的代码。    赋值到最后的状态的数组中，有效的剩余燃料，当前产生的子状态 $A$ 和账号代码本身 $\mathbf{o}$。
 
 \begin{equation}
 (\boldsymbol{\sigma}^{**}, g^{**}, A, \mathbf{o}) \equiv \Xi(\boldsymbol{\sigma}^*, g, I) \\
 \end{equation}
-where $I$ contains the parameters of the execution environment as defined in section \ref{ch:model}, that is:
+其中 $I$ 包含执行环境的相关参数, 这些参数在小结 \ref{ch:model} 中有详细定义:
 \begin{eqnarray}
 I_a & \equiv & a \\
 I_o & \equiv & o \\
@@ -702,21 +703,23 @@ I_\mathbf{b} & \equiv & \mathbf{i} \\
 I_e & \equiv & e
 \end{eqnarray}
 
-$I_\mathbf{d}$ evaluates to the empty tuple as there is no input data to this call. $I_H$ has no special treatment and is determined from the blockchain.
+如果没有输入数据,使用 $I_\mathbf{d}$ 表示空的元组。$I_H$ 没有什么特别的, 它由区块链决定。
 
-Code execution depletes gas, and gas may not go below zero, thus execution may exit before the code has come to a natural halting state. In this (and several other) exceptional cases we say an out-of-gas (OOG) exception has occurred: The evaluated state is defined as being the empty set, $\varnothing$, and the entire create operation should have no effect on the state, effectively leaving it as it was immediately prior to attempting the creation.
 
-If the initialization code completes successfully, a final contract-creation cost is paid, the code-deposit cost, $c$, proportional to the size of the created contract's code:
+代码执行消耗燃料，且燃料不能低于 0，因此程序执行可能会在自然终止之前会退出。在这个（以及其他几个）异常情况, 我们称发生了燃料不足（out-of-gas, OOG）异常：演进的状态变成空集合 $\varnothing$, 整个创建操作对状态没有影响,状态就像尝试创建合作之前一样。
+
+如果这个初始化代码成功地执行完，那么对应的合约创建的也会被支付。代码保存费用  $c$ 和创建的合约代码大小成正比:
+
 \begin{equation}
 c \equiv G_{codedeposit} \times |\mathbf{o}|
 \end{equation}
 
-If there is not enough gas remaining to pay this, \ie $g^{**} < c$, then we also declare an out-of-gas exception.
+如果没有足够的燃料支付这些, 例如 $g^{**} < c$, 就会抛出燃料不足异常。
 
-The gas remaining will be zero in any such exceptional condition, \ie if the creation was conducted as the reception of a transaction, then this doesn't affect payment of the intrinsic cost of contract creation; it is paid regardless. However, the value of the transaction is not transferred to the aborted contract's address when we are out-of-gas.
 
-If such an exception does not occur, then the remaining gas is refunded to the originator and the now-altered state is allowed to persist. Thus formally, we may specify the resultant state, gas and substate as $(\boldsymbol{\sigma}', g', A)$ where:
+发生这样的异常发生后, 剩余燃料将变为0。 如果合约创建是用于接受一个交易, 它不会影响合约创建内部消耗的燃料,无论如何都必须支付。然而，当燃料不足时, 并不会给这个合约地址转账。
 
+如果没有出现这样的异常,那么剩余的燃料会退会给最原始的发送者, 改变后的新状态也会永久保存。最终状态、燃料和子状态 $(\boldsymbol{\sigma}', g', A)$ 的关系如下:
 \begin{align}
 \quad g' &\equiv \begin{cases}
 0 & \text{if} \quad F \\
@@ -731,14 +734,14 @@ g^{**} - c & \text{otherwise} \\
 F &\equiv \big(\boldsymbol{\sigma}^{**} = \varnothing \ \vee\  g^{**} < c \ \vee\  |\mathbf{o}| > 24576\big)
 \end{align}
 
-The exception in the determination of $\boldsymbol{\sigma}'$ dictates that $\mathbf{o}$, the resultant byte sequence from the execution of the initialisation code, specifies the final body code for the newly-created account.
+上述 $\boldsymbol{\sigma}'$ 的公式,表明了执行代码初始化得到的最终字节序列 $\mathbf{o}$,就是新创建账户的代码体。
 
-Note that intention is that the result is either a successfully created new contract with its endowment, or no new contract with no transfer of value.
+当合约成功创建时, 如果有转账,对应的转账也会转到合约中;如果没有转账, 则仅是合约创建。
 
-\subsection{Subtleties}
-Note that while the initialisation code is executing, the newly created address exists but with no intrinsic body code. Thus any message call received by it during this time causes no code to be executed. If the initialisation execution ends with a {\small SELFDESTRUCT} instruction, the matter is moot since the account will be deleted before the transaction is completed. For a normal {\small STOP} code, or if the code returned is otherwise empty, then the state is left with a zombie account, and any remaining balance will be locked into the account forever.
+\subsection{细微之处}
+有一种情况需要注意, 当初始化代码正在执行时，新创建的地址出现了,但还没有内部的代码时。在这个时间内,任意消息调用不会引起代码执行。如果这个初始化执行结束于一个 {\small SELFDESTRUCT} 指令，这个账号会在交易执行完前将被删除, 这个行为是无意义的。对于 一个正常的 {\small STOP} 指令代码，或者返回的代码是空的, 这时候会出现一个僵尸账户，而且账户中剩余的余额将被永远被锁定在这个僵尸账户中。
 
-\section{Message Call} \label{ch:call}
+\section{消息调用} \label{ch:call}
 In the case of executing a message call, several parameters are required: sender ($s$), transaction originator ($o$), recipient ($r$), the account whose code is to be executed ($c$, usually the same as recipient), available gas ($g$), value ($v$) and gas price ($p$) together with an arbitrary length byte array, $\mathbf{d}$, the input data of the call and finally the present depth of the message-call/contract-creation stack ($e$).
 
 Aside from evaluating to a new state and transaction substate, message calls also have an extra component---the output data denoted by the byte array $\mathbf{o}$. This is ignored when executing transactions, however message calls can be initiated due to VM-code execution and in this case this information is used.
