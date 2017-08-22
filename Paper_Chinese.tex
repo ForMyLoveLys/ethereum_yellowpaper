@@ -742,21 +742,24 @@ F &\equiv \big(\boldsymbol{\sigma}^{**} = \varnothing \ \vee\  g^{**} < c \ \vee
 有一种情况需要注意, 当初始化代码正在执行时，新创建的地址出现了,但还没有内部的代码时。在这个时间内,任意消息调用不会引起代码执行。如果这个初始化执行结束于一个 {\small SELFDESTRUCT} 指令，这个账号会在交易执行完前将被删除, 这个行为是无意义的。对于 一个正常的 {\small STOP} 指令代码，或者返回的代码是空的, 这时候会出现一个僵尸账户，而且账户中剩余的余额将被永远被锁定在这个僵尸账户中。
 
 \section{消息调用} \label{ch:call}
-In the case of executing a message call, several parameters are required: sender ($s$), transaction originator ($o$), recipient ($r$), the account whose code is to be executed ($c$, usually the same as recipient), available gas ($g$), value ($v$) and gas price ($p$) together with an arbitrary length byte array, $\mathbf{d}$, the input data of the call and finally the present depth of the message-call/contract-creation stack ($e$).
+当执行消息调用时需要多个参数：发送者（$s$）、交易发起人（$o$）、接受者（$r$）、执行代码的账户（$c$,通常就是接受者）、可用的燃料（$g$）、转账额度（$v$）、燃料价格（$p$）、函数调用的一个任意长度字节的数组 $\mathbf{d}$ 的输入数据以及消息调用/合约创建的当前栈($e$)深度。。
 
-Aside from evaluating to a new state and transaction substate, message calls also have an extra component---the output data denoted by the byte array $\mathbf{o}$. This is ignored when executing transactions, however message calls can be initiated due to VM-code execution and in this case this information is used.
+除了转变到新的状态和交易子状态外，消息调用还有一个额外的元素 --- 用字节数组 $\mathbf{o}$ 表示的输出数据。执行交易时输出数据是被忽略的,但在消息调用时, 输出的数据由取决于虚拟机代码执行, 在这种情况下也使用了这些信息。
 \begin{equation}
 (\boldsymbol{\sigma}', g', A, \mathbf{o}) \equiv \Theta(\boldsymbol{\sigma}, s, o, r, c, g, p, v, \tilde{v}, \mathbf{d}, e)
 \end{equation}
-Note that we need to differentiate between the value that is to be transferred, $v$, from the value apparent in the execution context, $\tilde{v}$, for the {\small DELEGATECALL} instruction.
 
-We define $\boldsymbol{\sigma}_1$, the first transitional state as the original state but with the value transferred from sender to recipient:
+注意我们的是,当执行 {\small DELEGATECALL}  指令时,我们需要区别转账额度 $v$ 和执行上下文中的 $\tilde{v}$ 。
+
+
+我们定义，在原始状态基础上进行了发送者向接收者转账后为的状态第一个转变状态 $\boldsymbol{\sigma}_1$:
+
 \begin{equation}
 \boldsymbol{\sigma}_1[r]_b \equiv \boldsymbol{\sigma}[r]_b + v \quad\wedge\quad \boldsymbol{\sigma}_1[s]_b \equiv \boldsymbol{\sigma}[s]_b - v
 \end{equation}
 unless $s = r$.
 
-Throughout the present work, it is assumed that if $\boldsymbol{\sigma}_1[r]$ was originally undefined, it will be created as an account with no code or state and zero balance and nonce. Thus the previous equation should be taken to mean:
+我们假设如果 $\boldsymbol{\sigma}_1[r]$ 还未定义, 则会创建一个没有代码或没有状态,且余额和随机数都为0的账户。我们改进上一个方程式:
 \begin{equation}
 \boldsymbol{\sigma}_1 \equiv \boldsymbol{\sigma}_1' \quad \text{except:} \\
 \end{equation}
@@ -773,7 +776,8 @@ Throughout the present work, it is assumed that if $\boldsymbol{\sigma}_1[r]$ wa
 \end{cases}
 \end{equation}
 
-The account's associated code (identified as the fragment whose Keccak hash is $\boldsymbol{\sigma}[c]_c$) is executed according to the execution model (see section \ref{ch:model}). Just as with contract creation, if the execution halts in an exceptional fashion (i.e. due to an exhausted gas supply, stack underflow, invalid jump destination or invalid instruction), then no gas is refunded to the caller and the state is reverted to the point immediately prior to balance transfer (i.e. $\boldsymbol{\sigma}$).
+
+账户关联的代码（整个代码碎片, Keccak 哈希为  $\boldsymbol{\sigma}[c]_c$）依靠执行模式（见小结 \ref{ch:model}）执行。合约创建时，如果执行因为一个异常（例如：耗尽了燃料、堆栈溢出、无效的跳转目的地或者无效的指令）而被终止，燃料不会返回到调用者，且状态也会立即恢复到转账之前的状态(例如 $\boldsymbol{\sigma}$)。
 
 \begin{eqnarray}
 \boldsymbol{\sigma}' & \equiv & \begin{cases}
