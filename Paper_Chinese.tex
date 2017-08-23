@@ -804,17 +804,19 @@ I_e & \equiv & e \\
 \text{Let} \; \mathtt{\tiny KEC}(I_\mathbf{b}) & = & \boldsymbol{\sigma}[c]_c
 \end{eqnarray}
 
-It is assumed that the client will have stored the pair $(\mathtt{\tiny KEC}(I_\mathbf{b}), I_\mathbf{b})$ at some point prior in order to make the determination of $I_\mathbf{b}$ feasible.
+我们假设客户端会先保存数据对 $(\mathtt{\tiny KEC}(I_\mathbf{b}), I_\mathbf{b})$ , 以便更方便地根据 $I_\mathbf{b}$ 做出决定。
 
-As can be seen, there are four exceptions to the usage of the general execution framework $\Xi$ for evaluation of the message call: these are four so-called `precompiled' contracts, meant as a preliminary piece of architecture that may later become \textit{native extensions}. The four contracts in addresses 1, 2, 3 and 4 execute the elliptic curve public key recovery function, the SHA2 256-bit hash scheme, the RIPEMD 160-bit hash scheme and the identity function respectively.
+如我们所见，消息调用执行框架 $\Xi$ 中有4个特例: 这四个是‘预编译’合约，作为最初架构中的一部分后续可能会变成本地扩展。这四个合约地址分别为1、2、3和4，分别是用来执行椭圆曲线公钥恢复函数、SHA2 256位哈希方案、RIPEMD 160位哈希方案和身份函数。
 
-Their full formal definition is in Appendix \ref{app:precompiled}.
+这4个合约的详细定义见附录 \ref{app:precompiled}。
 
-\section{Execution Model} \label{ch:model}
+
+\section{执行模型} \label{ch:model}
+
 
 The execution model specifies how the system state is altered given a series of bytecode instructions and a small tuple of environmental data. This is specified through a formal model of a virtual state machine, known as the Ethereum Virtual Machine (EVM). It is a \textit{quasi-}Turing-complete machine; the \textit{quasi} qualification comes from the fact that the computation is intrinsically bounded through a parameter, \textit{gas}, which limits the total amount of computation done.
 
-\subsection{Basics}
+\subsection{基础}
 
 The EVM is a simple stack-based architecture. The word size of the machine (and thus size of stack item) is 256-bit. This was chosen to facilitate the Keccak-256 hash scheme and elliptic-curve computations. The memory model is a simple word-addressed byte array. The stack has a maximum size of $1024$. The machine also has an independent storage model; this is similar in concept to the memory but rather than a byte array, it is a word-addressable word array. Unlike memory, which is volatile, storage is non volatile and is maintained as part of the system state. All locations in both storage and memory are well-defined initially as zero.
 
@@ -822,7 +824,7 @@ The machine does not follow the standard von Neumann architecture. Rather than s
 
 The machine can have exceptional execution for several reasons, including stack underflows and invalid instructions. Like the out-of-gas exception, they do not leave state changes intact. Rather, the machine halts immediately and reports the issue to the execution agent (either the transaction processor or, recursively, the spawning execution environment) which will deal with it separately.
 
-\subsection{Fees Overview}
+\subsection{费用概览}
 
 Fees (denominated in gas) are charged under three distinct circumstances, all three as prerequisite to the execution of an operation. The first and most common is the fee intrinsic to the computation of the operation (see Appendix \ref{app:fees}). Secondly, gas may be deducted in order to form the payment for a subordinate message call or contract creation; this forms part of the payment for {\small CREATE}, {\small CALL} and {\small CALLCODE}. Finally, gas may be paid due to an increase in the usage of the memory.
 
