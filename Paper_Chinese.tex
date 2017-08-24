@@ -812,23 +812,23 @@ I_e & \equiv & e \\
 
 
 \section{执行模型} \label{ch:model}
-
-
-The execution model specifies how the system state is altered given a series of bytecode instructions and a small tuple of environmental data. This is specified through a formal model of a virtual state machine, known as the Ethereum Virtual Machine (EVM). It is a \textit{quasi-}Turing-complete machine; the \textit{quasi} qualification comes from the fact that the computation is intrinsically bounded through a parameter, \textit{gas}, which limits the total amount of computation done.
+执行模型具体说明怎么使用一系列字节代码指令和一个小的环境数据元组去改变这个系统状态。这些是通过以太坊虚拟机(Ethereum Virtual Machine - EVM)这个虚拟的状态来实现的。它是一个准图灵机,说"准"是因为计算会被燃料所限制。
 
 \subsection{基础}
 
-The EVM is a simple stack-based architecture. The word size of the machine (and thus size of stack item) is 256-bit. This was chosen to facilitate the Keccak-256 hash scheme and elliptic-curve computations. The memory model is a simple word-addressed byte array. The stack has a maximum size of $1024$. The machine also has an independent storage model; this is similar in concept to the memory but rather than a byte array, it is a word-addressable word array. Unlike memory, which is volatile, storage is non volatile and is maintained as part of the system state. All locations in both storage and memory are well-defined initially as zero.
+EVM 基于栈结构,机器的字大小（以及栈中数据的大小）是256位。主要是便于执行 Keccak-256 位哈希及椭圆曲线计算。内存模型基于字寻址的字节数据。栈的最大深度为1024。EVM也有一个独立的存储模型；类似内存但更新一个字节数组, 一个基于字寻址的字数组。不像易变的内存，存储是非易变的且是作为系统状态的一部分被维护。所有在内存和存储中的数据会初始化为0。
 
-The machine does not follow the standard von Neumann architecture. Rather than storing program code in generally-accessible memory or storage, it is stored separately in a virtual ROM interactable only through a specialised instruction.
+EVM 不是标准的诺依曼结构。它通过一个特别的指令把程序代码保存在一个虚拟的可以交互的 ROM 中, 而不是保存在一般性可访问的内存或存储中。
 
-The machine can have exceptional execution for several reasons, including stack underflows and invalid instructions. Like the out-of-gas exception, they do not leave state changes intact. Rather, the machine halts immediately and reports the issue to the execution agent (either the transaction processor or, recursively, the spawning execution environment) which will deal with it separately.
+EVM 在某些情况下会有异常发生，包括堆栈溢出和非法指令。就像缺乏燃料异常那样, 不会改变状态。有异常时, EVM 立即停止并告知执行代理(交易的处理者，或执行环境), 代理会单独处理异常。
 
-\subsection{费用概览}
+\subsection{费用概述}
 
-Fees (denominated in gas) are charged under three distinct circumstances, all three as prerequisite to the execution of an operation. The first and most common is the fee intrinsic to the computation of the operation (see Appendix \ref{app:fees}). Secondly, gas may be deducted in order to form the payment for a subordinate message call or contract creation; this forms part of the payment for {\small CREATE}, {\small CALL} and {\small CALLCODE}. Finally, gas may be paid due to an increase in the usage of the memory.
+在三个不同的情况下使用费用（命名为燃料），在这三种情况下，费用都是执行任何操作的必备条件。第一种情况也是最普通的情况就是计算操作费用（详见附录 \ref{app:fees}）。第二种情况，燃料可能因为一个子消息调用或者合约创建而被消耗,这是执行 {\small CREATE}, {\small CALL} and {\small CALLCODE} 费用中的一部分。第三种情况，燃料可能因为内存使用的增多而付费。
 
-Over an account's execution, the total fee for memory-usage payable is proportional to smallest multiple of 32 bytes that are required such that all memory indices (whether for read or write) are included in the range. This is paid for on a just-in-time basis; as such, referencing an area of memory at least 32 bytes greater than any previously indexed memory will certainly result in an additional memory usage fee. Due to this fee it is highly unlikely addresses will ever go above 32-bit bounds. That said, implementations must be able to manage this eventuality.
+对于一个账户的执行，内存总费用和最少需要的 32 字节倍数的内存量成正比, 所有的内存是按在一定范围中被包含的所有记忆索引（无论是读还是写）下要求的32位字节的最小倍数成比例的。这个为了 just-in-time (JIT) 的基础而去支付的；访问一个大于索引量 32 字节的地址的,就会需要额外的内存使用费。地址很容易超过 32 字节的限制, 但 EVM 不同。综上所述，必须能够去管理这些可能发生的事件。
+
+
 
 Storage fees have a slightly nuanced behaviour---to incentivise minimisation of the use of storage (which corresponds directly to a larger state database on all nodes), the execution fee for an operation that clears an entry in the storage is not only waived, a qualified refund is given; in fact, this refund is effectively paid up-front since the initial usage of a storage location costs substantially more than normal usage.
 
