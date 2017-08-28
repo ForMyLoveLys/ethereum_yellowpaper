@@ -829,43 +829,41 @@ EVM 在某些情况下会有异常发生，包括堆栈溢出和非法指令。�
 对于一个账户的执行，内存总费用和最少需要的 32 字节倍数的内存量成正比, 所有的内存是按在一定范围中被包含的所有记忆索引（无论是读还是写）下要求的32位字节的最小倍数成比例的。这个为了 just-in-time (JIT) 的基础而去支付的；访问一个大于索引量 32 字节的地址的,就会需要额外的内存使用费。地址很容易超过 32 字节的限制, 但 EVM 不同。综上所述，必须能够去管理这些可能发生的事件。
 
 
+存储费用有一个微妙的行为 —— 为最小化存储费用（直接与一个在所有结点上的大型状态数据通信），清除存储的执行费用指令不仅仅免除,而且会返回一些费用；因为初始化的存储费用往往比实际实际使用的多,在清除存储空间后会有返回费用, 这个返回的费用是预先支付的费用中的一部分。
 
-Storage fees have a slightly nuanced behaviour---to incentivise minimisation of the use of storage (which corresponds directly to a larger state database on all nodes), the execution fee for an operation that clears an entry in the storage is not only waived, a qualified refund is given; in fact, this refund is effectively paid up-front since the initial usage of a storage location costs substantially more than normal usage.
+详细的 EVM 燃料消耗定义见附录 \ref{app:vm}。
 
-See Appendix \ref{app:vm} for a rigorous definition of the EVM gas cost.
+\subsection{执行环境}
 
-\subsection{Execution Environment}
-
-In addition to the system state $\boldsymbol{\sigma}$, and the remaining gas for computation $g$, there are several pieces of important information used in the execution environment that the execution agent must provide; these are contained in the tuple $I$:
-
+除了系统状态$\boldsymbol{\sigma}$ 和 计算过程中剩余的燃料 $g$ 外, 还有一些在计算过程中需要提供的信息, 这些信息组成了元组 $I$:
 \begin{itemize}
-\item $I_a$, the address of the account which owns the code that is executing.
-\item $I_o$, the sender address of the transaction that originated this execution.
-\item $I_p$, the price of gas in the transaction that originated this execution.
-\item $I_\mathbf{d}$, the byte array that is the input data to this execution; if the execution agent is a transaction, this would be the transaction data.
-\item $I_s$, the address of the account which caused the code to be executing; if the execution agent is a transaction, this would be the transaction sender.
-\item $I_v$, the value, in Wei, passed to this account as part of the same procedure as execution; if the execution agent is a transaction, this would be the transaction value.
-\item $I_\mathbf{b}$, the byte array that is the machine code to be executed.
-\item $I_H$, the block header of the present block.
-\item $I_e$, the depth of the present message-call or contract-creation (i.e. the number of {\small CALL}s or {\small CREATE}s being executed at present).
+\item $I_a$, 拥有正在执行的代码的账户地址。
+\item $I_o$, 发起这次交易的发送者地址。
+\item $I_p$, 发起这次交易中的燃料价格。
+\item $I_\mathbf{d}$, 执行过程中的输入字节数组；如果这次执行是一个交易，这个就是交易数据。
+\item $I_s$, 触发代码执行的账户地址；如果这次执行是一个交易，则为交易发送者地址。
+\item $I_v$, 以 Wei 为单位的值,作为计算中的一部分传递给这个账户;如果这次执行是一个交易, 这个值为转账额度。
+\item $I_\mathbf{b}$, 机器代码字节数组, 会用来执行。
+\item $I_H$, 当前区块的区块头。
+\item $I_e$, 当前消息调用或合约创建的深度(例如: 当前 {\small CALL}s 或 {\small CREATE}s 被执行的次数)。
 \end{itemize}
 
-The execution model defines the function $\Xi$, which can compute the resultant state $\boldsymbol{\sigma}'$, the remaining gas $g'$, the accrued substate $A$ and the resultant output, $\mathbf{o}$, given these definitions. For the present context, we will defined it as:
+执行模型定义了函数 $\Xi$, 用来计算结果状态 $\boldsymbol{\sigma}'$, 剩余的燃料 $g'$, 产生的子状态 $A$ 和结果输出 $\mathbf{o}$, 根据当前的上下文,我们定义:
 \begin{equation}
 (\boldsymbol{\sigma}', g', A, \mathbf{o}) \equiv \Xi(\boldsymbol{\sigma}, g, I)
 \end{equation}
 
-where we will remember that $A$, the accrued substate is defined as the tuple of the suicides set $\mathbf{s}$, the log series $\mathbf{l}$ and the refunds $r$:
-
+应该还记得 $A$, 这个产生的子状态定义为自毁集合 $\mathbf{s}$、 日志系列 $\mathbf{l}$ 和 回推金额 $r$ 的元组:
 \begin{equation}
 A \equiv (\mathbf{s}, \mathbf{l}, r)
 \end{equation}
 
-\subsection{Execution Overview}
+\subsection{执行概述}
 
-We must now define the $\Xi$ function. In most practical implementations this will be modelled as an iterative progression of the pair comprising the full system state, $\boldsymbol{\sigma}$ and the machine state, $\boldsymbol{\mu}$. Formally, we define it recursively with a function $X$. This uses an iterator function $O$ (which defines the result of a single cycle of the state machine) together with functions $Z$ which determines if the present state is an exceptional halting state of the machine and $H$, specifying the output data of the instruction if and only if the present state is a normal halting state of the machine.
+我们现在必须去定义函数 $\Xi$。在大多实际执行过程中, 将会整个系统状态 $\boldsymbol{\sigma}$ 和机器状态 $\boldsymbol{\mu}$ 的迭代过程建模。我们定义一个递归函数 $X$, 它使用这个迭代函数 $O$(定义状态机中单循环的结果), 定义函数 $Z$ 用来表示当前状态是一个异常终止状态, 定义函数 $H$ 表示当前状态是正常终止时得到的结果数据。
 
-The empty sequence, denoted $()$, is not equal to the empty set, denoted $\varnothing$; this is important when interpreting the output of $H$, which evaluates to $\varnothing$ when execution is to continue but a series (potentially empty) when execution should halt.
+空序列使用 $()$ 表示,它不等于空的集合 $\varnothing$；这对理解 $H$ 的输出结果非常重要, 当 $H$ 的输出结果是 $\varnothing$ 时需要继续执行,但当 $H$ 的输出结果是时一个空的序列时执行应该终止。
+
 \begin{eqnarray}
 \Xi(\boldsymbol{\sigma}, g, I) & \equiv & (\boldsymbol{\sigma}'\!, \boldsymbol{\mu}'_g, A, \mathbf{o}) \\
 (\boldsymbol{\sigma}, \boldsymbol{\mu}'\!, A, ..., \mathbf{o}) & \equiv & X\big((\boldsymbol{\sigma}, \boldsymbol{\mu}, A^0\!, I)\big) \\
@@ -889,27 +887,27 @@ where
 (a, b, c, d) \cdot e & \equiv & (a, b, c, d, e)
 \end{eqnarray}
 
-Note that, when we evaluate $\Xi$, we drop the fourth element $I'$ and extract the remaining gas $\boldsymbol{\mu}'_g$ from the resultant machine state $\boldsymbol{\mu}'$.
+需要注意的是, 我们在推导 $\Xi$ 时, 我们去掉了第4个元素 $I'$ 并从结果状态 $\boldsymbol{\mu}'$ 中提取了剩余的燃料 $\boldsymbol{\mu}'_g$
 
-$X$ is thus cycled (recursively here, but implementations are generally expected to use a simple iterative loop) until either $Z$ becomes true indicating that the present state is exceptional and that the machine must be halted and any changes discarded or until $H$ becomes a series (rather than the empty set) indicating that the machine has reached a controlled halt.
+$X$ 被循环调用（这里是递归，但是通常是去执行一个简单的迭代循环）直到 $Z$  变成 true,表示当前状态有异常并且需要终止, 并且所有的改动都会被舍弃;  或者直到 $H$ 变成了一个序列（不是空集合），表示达到了正常的终止状态。
 
-\subsubsection{Machine State}
-The machine state $\boldsymbol{\mu}$ is defined as the tuple $(g, pc, \mathbf{m}, i, \mathbf{s})$ which are the gas available, the program counter $pc \in \mathbb{P}_{256}$ , the memory contents, the active number of words in memory (counting continuously from position 0), and the stack contents. The memory contents $\boldsymbol{\mu}_\mathbf{m}$ are a series of zeroes of size $2^{256}$.
+\subsubsection{机器状态}
+机器状态 $\boldsymbol{\mu}$ 定义为一个元组 $(g, pc, \mathbf{m}, i, \mathbf{s})$ , 包括可用的燃料 $g$, 程序计数器 $pc \in \mathbb{P}_{256}$ , 内存内容 \mathbf{m} , 内存中激活的字数(从位置 0 开始连续计数) $i$,以及栈内容 \mathbf{s}。内存内容 $\boldsymbol{\mu}_\mathbf{m}$ 表示空间大小为 $2^{256}$ 但内容都是0的空间。
 
-For the ease of reading, the instruction mnemonics, written in small-caps (\eg \space {\small ADD}), should be interpreted as their numeric equivalents; the full table of instructions and their specifics is given in Appendix \ref{app:vm}.
+为了提高可读性, 使用小型大写字母(例如 {\small ADD})的指令助记符都应该看作对应的数字方程式, 详细的指标表及定义见附录 \ref{app:vm}。
 
-For the purposes of defining $Z$, $H$ and $O$, we define $w$ as the current operation to be executed:
+为了更好的定义 $Z$, $H$ 和 $O$, 我们定义 $w$ 为当前待执行的指令:
 \begin{equation}\label{eq:currentoperation}
 w \equiv \begin{cases} I_\mathbf{b}[\boldsymbol{\mu}_{pc}] & \text{if} \quad \boldsymbol{\mu}_{pc} < \lVert I_\mathbf{b} \rVert \\
 \text{\small STOP} & \text{otherwise}
 \end{cases}
 \end{equation}
 
-We also assume the fixed amounts of $\mathbf{\delta}$ and $\mathbf{\alpha}$, specifying the stack items removed and added, both subscriptable on the instruction and an instruction cost function $C$ evaluating to the full cost, in gas, of executing the given instruction.
+我们使用 $\mathbf{\delta}$ 表示栈操作移除的元素数, 使用 $\mathbf{\alpha}$ 表示栈操作添加的元素数, 可以使用指令作为  $\mathbf{\delta}$ 、 $\mathbf{\alpha} 和指令费用函数 $C$ 的小标, $C$ 表示执行指定指令消耗的燃料。
 
-\subsubsection{Exceptional Halting}
+\subsubsection{异常终止}
 
-The exceptional halting function $Z$ is defined as:
+异常终止函数 $Z$ 定义如下:
 \begin{equation}
 Z(\boldsymbol{\sigma}, \boldsymbol{\mu}, I) \equiv
 \begin{array}[t]{l}
@@ -921,9 +919,20 @@ Z(\boldsymbol{\sigma}, \boldsymbol{\mu}, I) \equiv
 \end{array}
 \end{equation}
 
-This states that the execution is in an exceptional halting state if there is insufficient gas, if the instruction is invalid (and therefore its $\delta$ subscript is undefined), if there are insufficient stack items, if a {\small JUMP}/{\small JUMPI} destination is invalid or the new stack size would be larger then 1024. The astute reader will realise that this implies that no instruction can, through its execution, cause an exceptional halt.
 
-\subsubsection{Jump Destination Validity}
+以下情况都会发生异常而进入终止状态: 燃料不足、无效指令（无效指令的 $\delta$ 下角标不会进行定义）、缺少栈数据、指令 {\small JUMP}/{\small JUMPI} 的目标地址无效、新的栈大小会大于1024。聪明的读者将很容易发现,在整个执行过程中没有一个指令能显式触发异常而终止。
+
+
+\subsubsection{跳转目的有效性}
+
+跳转目的地的有效性（“Jump Destination Validity”）。我们之前使用D作为一个函数去决定给定
+正在允许代码中的有效跳转目的地的集合。我们定义JUMPDEST指令能在正在运行代码中的任意位置。
+
+像这样所有的位置必须是在有效指令边界，而不是使用PUSH操作进入数据的一部分，而且必须出现在被详细说明定义的部分代码中（而不是使用被详细说明定义的STOP指令去跟踪它）。
+           公式表达为：
+
+
+
 
 We previously used $D$ as the function to determine the set of valid jump destinations given the code that is being run. We define this as any position in the code occupied by a {\small JUMPDEST} instruction.
 
