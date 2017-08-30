@@ -923,27 +923,21 @@ Z(\boldsymbol{\sigma}, \boldsymbol{\mu}, I) \equiv
 以下情况都会发生异常而进入终止状态: 燃料不足、无效指令（无效指令的 $\delta$ 下角标不会进行定义）、缺少栈数据、指令 {\small JUMP}/{\small JUMPI} 的目标地址无效、新的栈大小会大于1024。聪明的读者将很容易发现,在整个执行过程中没有一个指令能显式触发异常而终止。
 
 
-\subsubsection{跳转目的有效性}
+\subsubsection{跳转地址验证}
 
-跳转目的地的有效性（“Jump Destination Validity”）。我们之前使用D作为一个函数去决定给定
-正在允许代码中的有效跳转目的地的集合。我们定义JUMPDEST指令能在正在运行代码中的任意位置。
+我们之前使用 $D$ 作为一个函数去定义正在运行的指定代码的有效跳转地址的集合。我们使用 JUMPDEST 指令表示代码可以跳转的地址。
 
-像这样所有的位置必须是在有效指令边界，而不是使用PUSH操作进入数据的一部分，而且必须出现在被详细说明定义的部分代码中（而不是使用被详细说明定义的STOP指令去跟踪它）。
-           公式表达为：
+这些跳转地址都必须在有效指令边界内，并且需要在显示定义在代码中,而不是基于 {\small PUSH} 指令操作的数据。（也不是使用隐含定义的 {\small STOP} 指令去跟踪它）。
 
+正式定义如下:
 
-
-
-We previously used $D$ as the function to determine the set of valid jump destinations given the code that is being run. We define this as any position in the code occupied by a {\small JUMPDEST} instruction.
-
-All such positions must be on valid instruction boundaries, rather than sitting in the data portion of {\small PUSH} operations and must appear within the explicitly defined portion of the code (rather than in the implicitly defined {\small STOP} operations that trail it).
 
 Formally:
 \begin{equation}
 D(\mathbf{c}) \equiv D_J(\mathbf{c}, 0)
 \end{equation}
 
-where:
+其中:
 \begin{equation}
 D_J(\mathbf{c}, i) \equiv \begin{cases}
 \{\} & \text{if} \quad i \geqslant |\mathbf{c}|  \\
@@ -952,16 +946,17 @@ D_J(\mathbf{c}, N(i, \mathbf{c}[i])) & \text{otherwise} \\
 \end{cases}
 \end{equation}
 
-where $N$ is the next valid instruction position in the code, skipping the data of a {\small PUSH} instruction, if any:
+$N$ 是代码中下一个有效指令位置, 如果有 {\small PUSH} 指令,会跳过相关数据。
+
 \begin{equation}
 N(i, w) \equiv \begin{cases}
 i + w - \text{\small PUSH1} + 2 & \text{if} \quad w \in [\text{\small PUSH1}, \text{\small PUSH32}] \\
 i + 1 & \text{otherwise} \end{cases}
 \end{equation}
 
-\subsubsection{Normal Halting}
+\subsubsection{正常停止}
 
-The normal halting function $H$ is defined:
+正常停止的函数 $H$ 定义如下:
 \begin{equation}
 H(\boldsymbol{\mu}, I) \equiv \begin{cases}
 H_{\text{\tiny RETURN}}(\boldsymbol{\mu}) & \text{if} \quad w = \text{\small RETURN} \\
@@ -970,9 +965,9 @@ H_{\text{\tiny RETURN}}(\boldsymbol{\mu}) & \text{if} \quad w = \text{\small RET
 \end{cases}
 \end{equation}
 
-The data-returning halt operation, \text{\small RETURN}, has a special function $H_{\text{\tiny RETURN}}$, defined in Appendix \ref{app:vm}.
+数据返回停止操作 \text{\small RETURN}, 在附录 \ref{app:vm} 中有详细的定义,函数名字是 $H_{\text{\tiny RETURN}}$ 。
 
-\subsection{The Execution Cycle}
+\subsection{执行周期}
 
 Stack items are added or removed from the left-most, lower-indexed portion of the series; all other items remain unchanged:
 \begin{eqnarray}
