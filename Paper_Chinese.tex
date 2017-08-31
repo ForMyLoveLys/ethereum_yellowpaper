@@ -968,8 +968,8 @@ H_{\text{\tiny RETURN}}(\boldsymbol{\mu}) & \text{if} \quad w = \text{\small RET
 数据返回停止操作 \text{\small RETURN}, 在附录 \ref{app:vm} 中有详细的定义,函数名字是 $H_{\text{\tiny RETURN}}$ 。
 
 \subsection{执行周期}
+序列的最左侧的、低端的数据被添加到栈或从栈中移除；所有其它数据都被保留不变:
 
-Stack items are added or removed from the left-most, lower-indexed portion of the series; all other items remain unchanged:
 \begin{eqnarray}
 O\big((\boldsymbol{\sigma}, \boldsymbol{\mu}, A, I)\big) & \equiv & (\boldsymbol{\sigma}', \boldsymbol{\mu}', A', I) \\
 \Delta & \equiv & \mathbf{\alpha}_w - \mathbf{\delta}_w \\
@@ -977,7 +977,8 @@ O\big((\boldsymbol{\sigma}, \boldsymbol{\mu}, A, I)\big) & \equiv & (\boldsymbol
 \quad \forall x \in [\mathbf{\alpha}_w, \lVert\boldsymbol{\mu}'_\mathbf{s}\rVert): \boldsymbol{\mu}'_\mathbf{s}[x] & \equiv & \boldsymbol{\mu}_\mathbf{s}[x+\Delta]
 \end{eqnarray}
 
-The gas is reduced by the instruction's gas cost and for most instructions, the program counter increments on each cycle, for the three exceptions, we assume a function $J$, subscripted by one of two instructions, which evaluates to the according value:
+对与大多数指令,燃料随着指令的执行而减少,每个周期程序计数器都会增加; 有三个特例，我们定义函数  $J$，下角标是二个指令中的一个，如下：
+
 \begin{eqnarray}
 \quad \boldsymbol{\mu}'_{g} & \equiv & \boldsymbol{\mu}_{g} - C(\boldsymbol{\sigma}, \boldsymbol{\mu}, I) \\
 \quad \boldsymbol{\mu}'_{pc} & \equiv & \begin{cases}
@@ -987,7 +988,7 @@ N(\boldsymbol{\mu}_{pc}, w) & \text{otherwise}
 \end{cases}
 \end{eqnarray}
 
-In general, we assume the memory, self-destruct set and system state don't change:
+在一般情况下，我们认为内存、自毁集合和系统状态不改变:
 \begin{eqnarray}
 \boldsymbol{\mu}'_\mathbf{m} & \equiv & \boldsymbol{\mu}_\mathbf{m} \\
 \boldsymbol{\mu}'_i & \equiv & \boldsymbol{\mu}_i \\
@@ -995,9 +996,10 @@ A' & \equiv & A \\
 \boldsymbol{\sigma}' & \equiv & \boldsymbol{\sigma}
 \end{eqnarray}
 
-However, instructions do typically alter one or several components of these values. Altered components listed by instruction are noted in Appendix \ref{app:vm}, alongside values for $\alpha$ and $\delta$ and a formal description of the gas requirements.
 
-\section{Blocktree to Blockchain} \label{ch:ghost}
+然而，指令通常会改变一个到几个元素的值。附录 \ref{app:vm} 列出了指令修改的元素,以及入栈数 $\alpha$ 、出栈数 $\delta$ 和燃料消耗。
+
+\section{区块树到区块链} \label{ch:ghost}
 
 The canonical blockchain is a path from root to leaf through the entire block tree. In order to have consensus over which path it is, conceptually we identify the path that has had the most computation done upon it, or, the \textit{heaviest} path. Clearly one factor that helps determine the heaviest path is the block number of the leaf, equivalent to the number of blocks, not counting the unmined genesis block, in the path. The longer the path, the greater the total mining effort that must have been done in order to arrive at the leaf. This is akin to existing schemes, such as that employed in Bitcoin-derived protocols.
 
