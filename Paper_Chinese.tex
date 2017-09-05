@@ -1001,19 +1001,20 @@ A' & \equiv & A \\
 
 \section{区块树到区块链} \label{ch:ghost}
 
-The canonical blockchain is a path from root to leaf through the entire block tree. In order to have consensus over which path it is, conceptually we identify the path that has had the most computation done upon it, or, the \textit{heaviest} path. Clearly one factor that helps determine the heaviest path is the block number of the leaf, equivalent to the number of blocks, not counting the unmined genesis block, in the path. The longer the path, the greater the total mining effort that must have been done in order to arrive at the leaf. This is akin to existing schemes, such as that employed in Bitcoin-derived protocols.
+权威的区块链是覆盖整个区块树的从根节点到叶子节点的路径。为了形成是路径共识，我们通过最大的计算量，或者说是最重的路径来识别它。识别最重路径的一个有效的因素是叶子节点的数量，它也是路径中区块的数量，不包含没有进行挖框的创世块(译者注:创始块通过硬编码写在了代码中及区块链中)。路径越长，到达最后一个叶子节点的代价越大。这和已有的比特币及其衍生协议类似。
 
-Since a block header includes the difficulty, the header alone is enough to validate the computation done. Any block contributes toward the total computation or \textit{total difficulty} of a chain.
+因为一个区块头包含难度信息，所以仅通过区块头就能验证已经做了挖矿计算。区块链中的任意一个区块都对总的计算或区块链难度有贡献。
 
-Thus we define the total difficulty of block $B$ recursively as:
+我们递归地定义区块 $B$ 的难度：
+
 \begin{eqnarray}
 B_t & \equiv & B'_t + B_d \\
 B' & \equiv & P(B_H)
 \end{eqnarray}
 
-As such given a block $B$, $B_t$ is its total difficulty, $B'$ is its parent block and $B_d$ is its difficulty.
+给定区块 $B$, $B_t$ 是它的总难度, $B'$ 是它的父块难度, $B_d$ 是它的难度。
 
-\section{Block Finalisation} \label{ch:finalisation}
+\section{区块定稿} \label{ch:finalisation}
 
 The process of finalising a block involves four stages:
 
