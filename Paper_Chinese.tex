@@ -930,9 +930,6 @@ Z(\boldsymbol{\sigma}, \boldsymbol{\mu}, I) \equiv
 这些跳转地址都必须在有效指令边界内，并且需要在显示定义在代码中,而不是基于 {\small PUSH} 指令操作的数据。（也不是使用隐含定义的 {\small STOP} 指令去跟踪它）。
 
 正式定义如下:
-
-
-Formally:
 \begin{equation}
 D(\mathbf{c}) \equiv D_J(\mathbf{c}, 0)
 \end{equation}
@@ -1016,23 +1013,24 @@ B' & \equiv & P(B_H)
 
 \section{区块定稿} \label{ch:finalisation}
 
+区块定稿涉及到 4 个步骤:
 The process of finalising a block involves four stages:
 
 \begin{enumerate}
-\item Validate (or, if mining, determine) ommers;
-\item validate (or, if mining, determine) transactions;
-\item apply rewards;
-\item verify (or, if mining, compute a valid) state and nonce.
+\item 验证叔链(如果是挖矿,确定叔链);
+\item 验证交易(如果是挖矿,确定交易);
+\item 应用奖励;
+\item 验证状态和随机数(如果是挖矿,计算有效的状态和随机数)。
 \end{enumerate}
 
-\subsection{Ommer Validation}
+\subsection{叔链验证}
 
-The validation of ommer headers means nothing more than verifying that each ommer header is both a valid header and satisfies the relation of $N$th-generation ommer to the present block where $N \leq 6$. The maximum of ommer headers is two. Formally:
+验证叔链头意味着需要验证每个叔链头的有效性并且是当前区块父块的第 $N$ 代, $N$ ≤ 6, 最多只能有2个叔链头, 公式如下:
 \begin{equation}
 \lVert B_\mathbf{U} \rVert \leqslant 2 \bigwedge_{U \in B_\mathbf{U}} V(U) \; \wedge \; k(U, P(B_H)_H, 6)
 \end{equation}
 
-where $k$ denotes the ``is-kin'' property:
+$k$ 表示直系关系:
 \begin{equation}
 k(U, H, n) \equiv \begin{cases} false & \text{if} \quad n = 0 \\
 s(U, H) &\\
@@ -1040,24 +1038,22 @@ s(U, H) &\\
 \end{cases}
 \end{equation}
 
-and $s$ denotes the ``is-sibling'' property:
+$s$ 表示兄弟关系:
 \begin{equation}
 s(U, H) \equiv (P(H) = P(U)\; \wedge \; H \neq U \; \wedge \; U \notin B(H)_\mathbf{U})
 \end{equation}
-where $B(H)$ is the block of the corresponding header $H$.
+$B(H)$ 表示对应的区块头 $H$.
 
-\subsection{Transaction Validation}
+\subsection{交易验证}
 
-%where $s[i]$ equals the root of the state trie immediately after the execution of the transaction $B_\mathbf{T}[i]$, and $g[i]$ the total gas used immediately after said transaction.
+使用的燃料数量一定要和交易列表中列出的一致：区块燃料总使用量 ${B_H}_g$ ，应该和这个区块中所有交易使用的燃料量之和相等：
 
-The given \textbf{gasUsed} must correspond faithfully to the transactions listed: ${B_H}_g$, the total gas used in the block, must be equal to the accumulated gas used according to the final transaction:
 \begin{equation}
 {B_H}_g = \ell(\mathbf{R})_u
 \end{equation}
 
-\subsection{Reward Application}
-
-The application of rewards to a block involves raising the balance of the accounts of the beneficiary address of the block and each ommer by a certain amount. We raise the block's beneficiary account by $R_b$; for each ommer, we raise the block's beneficiary by an additional $\frac{1}{32}$ of the block reward and the beneficiary of the ommer gets rewarded depending on the block number. Formally we define the function $\Omega$:
+\subsection{奖励}
+对一个区块, 会奖励当前区块的受益账户及叔链账户。以 $R_b$ 表示当前区块受益者的固定奖励额度;对每个叔链, 奖励当前区块受益者固定奖励的 $\frac{1}{32}$, 叔链受益者的奖励额度取决于区块编号。 我们定义函数 $\Omega$ :
 \begin{eqnarray}
 \Omega(B, \boldsymbol{\sigma}) & \equiv & \boldsymbol{\sigma}': \boldsymbol{\sigma}' = \boldsymbol{\sigma} \quad \text{except:} \\
 \boldsymbol{\sigma}'[{B_H}_c]_b & = & \boldsymbol{\sigma}[{B_H}_c]_b + (1 + \frac{\lVert B_\mathbf{U}\rVert}{32})R_b \\
@@ -1065,15 +1061,16 @@ The application of rewards to a block involves raising the balance of the accoun
  \boldsymbol{\sigma}'[U_c]_b & = & \boldsymbol{\sigma}[U_c]_b + (1 + \frac{1}{8} (U_i - {B_H}_i)) R_b
 \end{eqnarray}
 
-If there are collisions of the beneficiary addresses between ommers and the block (i.e. two ommers with the same beneficiary address or an ommer with the same beneficiary address as the present block), additions are applied cumulatively.
+如果叔链和区块的受益者账号冲突（比如：两个相同的叔链受益者账户或者一个叔链受益者账户和当前区块的受益者账户相同），额外的奖励会累积。
 
-We define the block reward as 5 Ether:
+我们定义区块的奖励会 5 以太币:
 \begin{equation}
 \text{Let} \quad R_b = 5 \times 10^{18}
 \end{equation}
 
-\subsection{State \& Nonce Validation}\label{sec:statenoncevalidation}
+\subsection{状态和随机数验证}\label{sec:statenoncevalidation}
 
+我们定义函数 $\Gamma$, 映射到区块 $B$ 的初始状态:
 We may now define the function, $\Gamma$, that maps a block $B$ to its initiation state:
 \begin{equation}
 \Gamma(B) \equiv \begin{cases}
@@ -1082,25 +1079,27 @@ We may now define the function, $\Gamma$, that maps a block $B$ to its initiatio
 \end{cases}
 \end{equation}
 
-Here, $\mathtt{\small TRIE}(L_S(\boldsymbol{\sigma}_i))$ means the hash of the root node of a trie of state $\boldsymbol{\sigma}_i$; it is assumed that implementations will store this in the state database, trivial and efficient since the trie is by nature an immutable data structure.
+其中，$\mathtt{\small TRIE}(L_S(\boldsymbol{\sigma}_i))$ 表示状态 $\boldsymbol{\sigma}_i$ 对应字典树根节点的哈希;执行时会将其保存在状态数据库中,字典树结构天生不易变,所以它是高效的。
 
-And finally define $\Phi$, the block transition function, which maps an incomplete block $B$ to a complete block $B'$:
+最后定义区块转换函数 $\Phi$，映射了一个不完整区块 $B$ 到一个完整的区块 $B'$：
 \begin{eqnarray}
 \Phi(B) & \equiv & B': \quad B' = B^* \quad \text{except:} \\
 B'_n & = & n: \quad x \leqslant \frac{2^{256}}{H_d} \\
 B'_m & = & m \quad \text{with } (x, m) = \mathtt{PoW}(B^*_{\hcancel{n}}, n, \mathbf{d}) \\
 B^* & \equiv & B \quad \text{except:} \quad B^*_r = r(\Pi(\Gamma(B), B))
 \end{eqnarray}
-With $\mathbf{d}$ being a dataset as specified in appendix \ref{app:ethash}.
+其中 $\mathbf{d}$ 是一个数据集, 详见附录 \ref{app:ethash}。
 
-As specified at the beginning of the present work, $\Pi$ is the state-transition function, which is defined in terms of $\Omega$, the block finalisation function and $\Upsilon$, the transaction-evaluation function, both now well-defined.
+就像在本文开始定义的那样,$\Pi$ 是状态转换函数，通过区块定稿函数 $\Omega$ 和交易演变函数 $\Upsilon$ 去定义 $\Pi$。
 
-As previously detailed, $\mathbf{R}[n]_{\boldsymbol{\sigma}}$, $\mathbf{R}[n]_\mathbf{l}$ and $\mathbf{R}[n]_u$ are the $n$th corresponding states, logs and cumulative gas used after each transaction ($\mathbf{R}[n]_b$, the fourth component in the tuple, has already been defined in terms of the logs). The former is defined simply as the state resulting from applying the corresponding transaction to the state resulting from the previous transaction (or the block's initial state in the case of the first such transaction):
+之前的定义中，$\mathbf{R}[n]_{\boldsymbol{\sigma}}$, $\mathbf{R}[n]_\mathbf{l}$ 和 $\mathbf{R}[n]_u$，表示第 n 个对应的状态、日志和累计使用的燃料（在元组中的第四个元素 $\mathbf{R}[n]_b$，之前以日志条目去定义）。前者简单定义为通过对之前的交易状态执行交易得到新的结果状态（如果是第一个交易，之前的交易状态为创始块的状态）:
+
 \begin{equation}
 \mathbf{R}[n]_{\boldsymbol{\sigma}} = \begin{cases} \Gamma(B) & \text{if} \quad n < 0 \\ \Upsilon(\mathbf{R}[n - 1]_{\boldsymbol{\sigma}}, B_\mathbf{T}[n]) & \text{otherwise} \end{cases}
 \end{equation}
 
-In the case of $B_\mathbf{R}[n]_u$, we take a similar approach defining each item as the gas used in evaluating the corresponding transaction summed with the previous item (or zero, if it is the first), giving us a running total:
+对于 $B_\mathbf{R}[n]_u$, 我们定义从之前的交易转变对应交易的累计使用燃料（如果是第一个,则为 0 ）：
+
 \begin{equation}
 \mathbf{R}[n]_u = \begin{cases} 0 & \text{if} \quad n < 0 \\
 \begin{array}[b]{l}
@@ -1109,20 +1108,20 @@ In the case of $B_\mathbf{R}[n]_u$, we take a similar approach defining each ite
  & \text{otherwise} \end{cases}
 \end{equation}
 
-For $\mathbf{R}[n]_\mathbf{l}$, we utilise the $\Upsilon^\mathbf{l}$ function that we conveniently defined in the transaction execution function.
+对于 $\mathbf{R}[n]_\mathbf{l}$, 我们使用之前定义的交易执行函数 $\Upsilon^\mathbf{l}$。
 \begin{equation}
 \mathbf{R}[n]_\mathbf{l} =
 \Upsilon^\mathbf{l}(\mathbf{R}[n - 1]_{\boldsymbol{\sigma}}, B_\mathbf{T}[n])
 \end{equation}
 
-Finally, we define $\Pi$ as the new state given the block reward function $\Omega$ applied to the final transaction's resultant state, $\ell(B_\mathbf{R})_{\boldsymbol{\sigma}}$:
+最后,我们定义函数 $\Pi$ 是在交易结果状态 $\ell(B_\mathbf{R})_{\boldsymbol{\sigma}}$ 之上执行了回报函数  $\Omega$ 后的新状态::
 \begin{equation}
 \Pi(\boldsymbol{\sigma}, B) \equiv \Omega(B, \ell(\mathbf{R})_{\boldsymbol{\sigma}})
 \end{equation}
 
-Thus the complete block-transition mechanism, less $\mathtt{PoW}$, the proof-of-work function is defined.
+到此,我们完成了区块转换机制以及工作量证明 $\mathtt{PoW}$ 的定义。
 
-\subsection{Mining Proof-of-Work} \label{ch:pow}
+\subsection{挖矿和工作量证明} \label{ch:pow}
 
 The mining proof-of-work (PoW) exists as a cryptographically secure nonce that proves beyond reasonable doubt that a particular amount of computation has been expended in the determination of some token value $n$. It is utilised to enforce the blockchain security by giving meaning and credence to the notion of difficulty (and, by extension, total difficulty). However, since mining new blocks comes with an attached reward, the proof-of-work not only functions as a method of securing confidence that the blockchain will remain canonical into the future, but also as a wealth distribution mechanism.
 
