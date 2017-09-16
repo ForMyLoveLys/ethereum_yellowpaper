@@ -1139,16 +1139,18 @@ B^* & \equiv & B \quad \text{except:} \quad B^*_r = r(\Pi(\Gamma(B), B))
 m = H_m \quad \wedge \quad n \leqslant \frac{2^{256}}{H_d} \quad \text{with} \quad (m, n) = \mathtt{PoW}(H_{\hcancel{n}}, H_n, \mathbf{d})
 \end{equation}
 
-Where $H_{\hcancel{n}}$ is the new block's header but \textit{without} the nonce and mix-hash components; $H_n$ is the nonce of the header; $\mathbf{d}$ is a large data set needed to compute the mixHash and $H_d$ is the new block's difficulty value (i.e. the block difficulty from section \ref{ch:ghost}). $\mathtt{PoW}$ is the proof-of-work function which evaluates to an array with the first item being the mixHash and the second item being a pseudo-random number cryptographically dependent on $H$ and $\mathbf{d}$. The underlying algorithm is called Ethash and is described below.
+其中 $H_{\hcancel{n}}$ 是没有包含随机数和混合哈希元素的新区块头; $H_n$ 是区块头的随机数；$\mathbf{d}$ 是一个需要计算混合哈希值的数据集合;$H_d$ 是新区块的难度值（区块难度详见小结 \ref{ch:ghost} ）。$\mathtt{PoW}$ 是工作量证明函数，这个函数根据数组做计算, 这个数组中的第一个元素是混合哈希,第二个元素是依赖于 $H$ 和 $\mathbf{d}$ 的加密伪随机数。这个算法称为 Ethash , 下文会详细介绍。
 
 \subsubsection{Ethash}
-Ethash is the PoW algorithm for Ethereum 1.0. It is the latest version of Dagger-Hashimoto, introduced by \cite{dagger} and \cite{hashimoto}, although it can no longer appropriately be called that since many of the original features of both algorithms have been drastically changed in the last month of research and development. The general route that the algorithm takes is as follows:
 
-There exists a seed which can be computed for each block by scanning through the block headers up until that point. From the seed, one can compute a pseudorandom cache, $J_{cacheinit}$ bytes in initial size. Light clients store the cache. From the cache, we can generate a dataset, $J_{datasetinit}$ bytes in initial size, with the property that each item in the dataset depends on only a small number of items from the cache. Full clients and miners store the dataset. The dataset grows linearly with time.
+Ethash 是以太坊 1.0 的 PoW 算法。它是 Dagger-Hashimoto 的最后版本，Buterin
+ [2013b] 和 Dryja[2014] 介绍过。再被它为 Dagger-Hashimoto 已不大合适, 因为很多算法的最初特性已经被大量地修改。这个算法的概况如下：
 
-Mining involves grabbing random slices of the dataset and hashing them together. Verification can be done with low memory by using the cache to regenerate the specific pieces of the dataset that you need, so you only need to store the cache. The large dataset is updated once every $J_{epoch}$ blocks, so the vast majority of a miner's effort will be reading the dataset, not making changes to it. The mentioned parameters as well as the algorithm is explained in detail in appendix \ref{app:ethash}.
+通过扫描区块头可以计算一个种子。根据种子，可以计算一个初始大小为 $J_{cacheinit}$ 字节位随机数缓存。轻节点客户端可以保存这个缓存。根据缓冲，我们能生成一个初始化为 $J_{datasetinit}$ 字节的数据集合，数据集合中每个元素依赖于缓冲中的一小部分数据。全节点客户和矿工保存着数据集合。数据集合随时间线性增长。
 
-\section{Implementing Contracts}
+挖矿涉及到组合数据集合的随机碎片并将他们哈希在一起。使用少量内存就可以验证, 可以借助缓存重新产生需要的数据片段, 所以仅需要保存缓存即可。大的数据集合每$J_{epoch}$ (译者注: 30000) 个区块更新一次，所以大多数矿工的工作都是读取这些数据集合，而不是尝试改变它。附录 \ref{app:ethash} 想 Ethash 的详细解释。
+
+\section{执行合约}
 
 There are several patterns of contracts engineering that allow particular useful behaviours; two of these that I will briefly discuss are data feeds and random numbers.
 
