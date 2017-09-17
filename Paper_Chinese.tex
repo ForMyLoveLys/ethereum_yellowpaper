@@ -572,7 +572,7 @@ g_0 \equiv {} & \sum_{i \in T_\mathbf{i}, T_\mathbf{d}} \begin{cases} G_{txdataz
 {} & + G_{transaction}
 \end{align}
 
-$T_\mathbf{i} 合约初始化EVM代码, T_\mathbf{d} 是交易附带的关联数据, 取决于交易是合约创建还是消息调用。如果这个交易是合约创建,那么会增加 $G_\text{txcreate}$ , 其它情况则不增加。$G$ 的详细定义见附录 \ref{app:fees}。
+$T_\mathbf{i}$ 合约初始化EVM代码, $T_\mathbf{d}$ 是交易附带的关联数据, 取决于交易是合约创建还是消息调用。如果这个交易是合约创建,那么会增加 $G_\text{txcreate}$ , 其它情况则不增加。$G$ 的详细定义见附录 \ref{app:fees}。
 
 预支付的费用 $v_0$ 计算如下:
 \begin{equation}
@@ -892,7 +892,7 @@ where
 $X$ 被循环调用（这里是递归，但是通常是去执行一个简单的迭代循环）直到 $Z$  变成 true,表示当前状态有异常并且需要终止, 并且所有的改动都会被舍弃;  或者直到 $H$ 变成了一个序列（不是空集合），表示达到了正常的终止状态。
 
 \subsubsection{机器状态}
-机器状态 $\boldsymbol{\mu}$ 定义为一个元组 $(g, pc, \mathbf{m}, i, \mathbf{s})$ , 包括可用的燃料 $g$, 程序计数器 $pc \in \mathbb{P}_{256}$ , 内存内容 \mathbf{m} , 内存中激活的字数(从位置 0 开始连续计数) $i$,以及栈内容 \mathbf{s}。内存内容 $\boldsymbol{\mu}_\mathbf{m}$ 表示空间大小为 $2^{256}$ 但内容都是0的空间。
+机器状态 $\boldsymbol{\mu}$ 定义为一个元组 $(g, pc, \mathbf{m}, i, \mathbf{s})$ , 包括可用的燃料 $g$, 程序计数器 $pc \in \mathbb{P}_{256}$ , 内存内容 $\mathbf{m}$ , 内存中激活的字数(从位置 0 开始连续计数) $i$,以及栈内容 $\mathbf{s}$。内存内容 $\boldsymbol{\mu}_\mathbf{m}$ 表示空间大小为 $2^{256}$ 但内容都是0的空间。
 
 为了提高可读性, 使用小型大写字母(例如 {\small ADD})的指令助记符都应该看作对应的数字方程式, 详细的指标表及定义见附录 \ref{app:vm}。
 
@@ -1151,44 +1151,41 @@ Ethash 是以太坊 1.0 的 PoW 算法。它是 Dagger-Hashimoto 的最后版本
 挖矿涉及到组合数据集合的随机碎片并将他们哈希在一起。使用少量内存就可以验证, 可以借助缓存重新产生需要的数据片段, 所以仅需要保存缓存即可。大的数据集合每$J_{epoch}$ (译者注: 30000) 个区块更新一次，所以大多数矿工的工作都是读取这些数据集合，而不是尝试改变它。附录 \ref{app:ethash} 想 Ethash 的详细解释。
 
 \section{执行合约}
+有一些特别有用的合约模式；其中会讨论其中两个,分别是数据订阅和随机数。
 
-There are several patterns of contracts engineering that allow particular useful behaviours; two of these that I will briefly discuss are data feeds and random numbers.
+\subsection{数据订阅}
+一个数据订阅合约提供简单的服务：它允许外部的信息可以进入以太坊系统内。以太坊系统不会保证这个信息的精确度和及时性，这是第二方合约作者的任务, 第二方合约作者使用数据订阅并决定能否信任单个数据订阅服务。
 
-\subsection{Data Feeds}
-A data feed contract is one which provides a single service: it gives access to information from the external world within Ethereum. The accuracy and timeliness of this information is not guaranteed and it is the task of a secondary contract author---the contract that utilises the data feed---to determine how much trust can be placed in any single data feed.
+通常的模式是,通过消息调用触发单个以太坊中合约，得到一个关于外部现象的信息回应。一个例子可能是纽约城市的本地温度。这个会作为合约执行并返回在存储中的一些值。当然存储中的这些值必须比如温度需要维护以保证准确, 这样模式中的第二方才可以将其作为外部服务来运行以太坊节点,当发现一个新区块时立即创建一个新的有效交易发送到合约并更新存贮中的值。合约代码将仅仅接受包含指定服务的数据更新。
 
-The general pattern involves a single contract within Ethereum which, when given a message call, replies with some timely information concerning an external phenomenon. An example might be the local temperature of New York City. This would be implemented as a contract that returned that value of some known point in storage. Of course this point in storage must be maintained with the correct such temperature, and thus the second part of the pattern would be for an external server to run an Ethereum node, and immediately on discovery of a new block, creates a new valid transaction, sent to the contract, updating said value in storage. The contract's code would accept such updates only from the identity contained on said server.
+\subsection{随机数}
+在确定系统中提供随机数字,显然是一个不可能实现的任务。然而我们可以利用根据交易时还不可知的数据来生成伪随机数。比如区块哈希值、区块时间戳、区块受益人的地址。为了避免被矿工难以控制这些随机数,建议使用 {\small BLOCKHASH} 操作获得最近 256 个区块的某个区块哈希作为伪随机数。 对于获得这样一系列这样的数字，一个方法就是去增加一个常量并对结果做哈希。
 
-\subsection{Random Numbers}
-Providing random numbers within a deterministic system is, naturally, an impossible task. However, we can approximate with pseudo-random numbers by utilising data which is generally unknowable at the time of transacting. Such data might include the block's hash, the block's timestamp and the block's beneficiary address. In order to make it hard for malicious miner to control those values, one should use the {\small BLOCKHASH} operation in order to use hashes of the previous 256 blocks as pseudo-random numbers. For a series of such numbers, a trivial solution would be to add some constant amount and hashing the result.
+\section{未来方向} \label{ch:future}
+未来状态数据库将不被强行维护所有之前的字典树状态。它应该对每个节点维护一定时间,并抛弃较久远的且不是检查点的节点；检查点或允许特别的区块状态字典树穿越的数据中的系列节点,可以用来最大限度的去替代一些计算, 来获得区块链中的任意一个状态。
 
-\section{Future Directions} \label{ch:future}
+区块链合并可以用来减少作为全节点或挖矿节点客户端需要下载的区块数量。及时将给定节点（也许每10000个区块）对应的的字典树压缩, 并在点对点网络中维护，且有效地重塑创世块。下载单个归档时,可以减少下载的区块数量。
 
-The state database won't be forced to maintain all past state trie structures into the future. It should maintain an age for each node and eventually discard nodes that are neither recent enough nor checkpoints; checkpoints, or a set of nodes in the database that allow a particular block's state trie to be traversed, could be used to place a maximum limit on the amount of computation needed in order to retrieve any state throughout the blockchain.
+最后，或许会引导压缩区块链：可以抛弃在一定量的区块总没有发送或接受交易的字典树状态节点,以便减少状态数据库的增长。
 
-Blockchain consolidation could be used in order to reduce the amount of blocks a client would need to download to act as a full, mining, node. A compressed archive of the trie structure at given points in time (perhaps one in every 10,000th block) could be maintained by the peer network, effectively recasting the genesis block. This would reduce the amount to be downloaded to a single archive plus a hard maximum limit  of blocks.
+\subsection{可扩展性}
+可扩展性仍然是一个永恒的顾虑。因为一个一般化的状态交易函数，使得切分及并行化交易难以使用分而治之的策略。仍未解决的是，系统的平均交易值在增加, 但系统的能力范围却是固定的,其中低价值的交易保存在主账本中已无经济意义,因而会被忽略。尽管如此，一些策略存有可能发展为可扩展性的协议来解决此问题。
 
-Finally, blockchain compression could perhaps be conducted: nodes in state trie that haven't sent/received a transaction in some constant amount of blocks could be thrown out, reducing both Ether-leakage and the growth of the state database.
+一些形式的层次结构，通过合并小的轻量的链到主区块或通过组合小的交易集合构建主区块, 或许可能实现交易组合和区块构建的并行化。并行化机制也可以这样实现: 针对有优先顺序的并列的区块链,通过合并或抛弃无效交易来合并区块。
 
-\subsection{Scalability}
+最后，可验证的计算，如果可用并且足够有效，可能提供一个方法允许工作量证明成为最后状态的验证。
 
-Scalability remains an eternal concern. With a generalised state transition function, it becomes difficult to partition and parallelise transactions to apply the divide-and-conquer strategy. Unaddressed, the dynamic value-range of the system remains essentially fixed and as the average transaction value increases, the less valuable of them become ignored, being economically pointless to include in the main ledger. However, several strategies exist that may potentially be exploited to provide a considerably more scalable protocol.
+\section{结论} \label{ch:conclusion}
+我们已经介绍讨论并正式定义了以太坊协议。通过这个协议，读者可以太坊网络上部署一个节点并在一个去中心化的安全的开放系统中连接其它节点。合约可能会被授权, 以便计算性地确定和自动化执行交互规则。
 
-Some form of hierarchical structure, achieved by either consolidating smaller lighter-weight chains into the main block or building the main block through the incremental combination and adhesion (through proof-of-work) of smaller transaction sets may allow parallelisation of transaction combination and block-building. Parallelism could also come from a prioritised set of parallel blockchains, consolidated each block and with duplicate or invalid transactions thrown out accordingly.
+\section{致谢}
 
-Finally, verifiable computation, if made generally available and efficient enough, may provide a route to allow the proof-of-work to be the verification of final state.
+非常感谢 Aeron Buchanan 编写家园版本, Christoph Jentzsch 编写 Ethash 算法,Yoichi Hirai 做了 EIP-150 大多数更新。以太坊开发组织和社区提供了重要的维护和大量的矫正及建议,其中包括Gustav Simonsson, Pawe\l{} Bylica, Jutta Steiner, Nick Savers, Viktor Tr\'{o}n, Marko Simovic, Giacomo Tazzari, 当然,还包含Vitalik Buterin。
 
-\section{Conclusion} \label{ch:conclusion}
+\section{可用性}
 
-I have introduced, discussed and formally defined the protocol of Ethereum. Through this protocol the reader may implement a node on the Ethereum network and join others in a decentralised secure social operating system. Contracts may be authored in order to algorithmically specify and autonomously enforce rules of interaction.
+本文的英文源文件维护在 \url{https://github.com/ethereum/yellowpaper/}. 一个自动生成的英文 PDF 格式文件见 \url{https://ethereum.github.io/yellowpaper/paper.pdf}。
 
-\section{Acknowledgements}
-
-Many thanks to Aeron Buchanan for authoring the Homestead revisions, Christoph Jentzsch for authoring the Ethash algorithm and Yoichi Hirai for doing most of the EIP-150 changes. Important maintenance, useful corrections and suggestions were provided by a number of others from the Ethereum DEV organisation and Ethereum community at large including Gustav Simonsson, Pawe\l{} Bylica, Jutta Steiner, Nick Savers, Viktor Tr\'{o}n, Marko Simovic, Giacomo Tazzari and, of course, Vitalik Buterin.
-
-\section{Availability}
-
-The source of this paper is maintained at \url{https://github.com/ethereum/yellowpaper/}. An auto-generated PDF is located at \url{https://ethereum.github.io/yellowpaper/paper.pdf}.
 
 \bibliography{Biblio}
 \bibliographystyle{plainnat}
